@@ -1,0 +1,37 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build acp-bridge.slnx -c Release
+
+      # Drives both halves as real processes. The seams worth testing are the ones a process
+      # boundary creates, so there is nothing to gain from calling the pump directly.
+      - name: Conformance
+        run: |
+          dotnet run --project tests/AcpKit.Bridge.Tests -c Release --no-build
+        env:
+          ACP_BRIDGE: ${{ github.workspace }}/artifacts/bin/AcpKit.Bridge/release/acp-bridge

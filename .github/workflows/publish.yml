@@ -1,0 +1,59 @@
+name: publish
+
+# Publishing a drafted release is the trigger. GitHub creates the tag as part of publishing,
+# so this fires with the tag already in place for MinVer to read.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Pack and validate without pushing'
+        type: boolean
+        default: true
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build acp-bridge.slnx -c Release
+
+      - name: Conformance
+        run: dotnet run --project tests/AcpKit.Bridge.Tests -c Release --no-build
+        env:
+          ACP_BRIDGE: ${{ github.workspace }}/artifacts/bin/AcpKit.Bridge/release/acp-bridge
+
+      - name: Pack
+        run: dotnet pack src/AcpKit.Bridge -c Release --no-build -o artifacts/package
+
+      - name: Authenticate to NuGet
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: knyzorg
+
+      - name: Push
+        if: github.event_name == 'release' || !inputs.dry-run
+        run: |
+          dotnet nuget push 'artifacts/package/*.nupkg' \
+            --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate

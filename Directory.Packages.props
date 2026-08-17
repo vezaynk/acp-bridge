@@ -1,0 +1,16 @@
+<Project>
+
+  <PropertyGroup>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <!--
+    The tool takes no runtime package dependencies. It needs Kestrel to host the listener and
+    System.IO.Pipelines to frame the stream, and both arrive with the ASP.NET Core shared
+    framework, so neither is a package anyone has to resolve. MinVer is build-time only.
+  -->
+  <ItemGroup>
+    <PackageVersion Include="MinVer" Version="6.0.0" />
+  </ItemGroup>
+
+</Project>

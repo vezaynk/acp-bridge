@@ -1,0 +1,28 @@
+name: release-drafter
+
+# Keeps a draft release up to date as pull requests merge. Publishing that draft is what
+# actually cuts a release: it creates the tag, which MinVer turns into the package version,
+# and publish.yml takes it from there.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    # So the autolabeler runs and the draft's categories are right before merge, not after.
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: release-drafter/release-drafter@v6
+        with:
+          config-name: release-drafter.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

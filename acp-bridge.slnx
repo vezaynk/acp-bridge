@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AcpKit.Bridge/AcpKit.Bridge.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AcpKit.Bridge.Tests/AcpKit.Bridge.Tests.csproj" />
+  </Folder>
+</Solution>

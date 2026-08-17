@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>AcpKit.Bridge.Tests</RootNamespace>
+    <AssemblyName>acp-bridge-tests</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Built alongside, but driven as a process rather than called as a library: the bridge
+         is a CLI, and the seams worth testing are the ones a process boundary creates. -->
+    <ProjectReference Include="../../src/AcpKit.Bridge/AcpKit.Bridge.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,40 @@
+# Keeps a draft release updated as pull requests merge, so cutting a release is a decision
+# rather than a chore. Nothing is published until someone presses Publish on the draft.
+
+name-template: 'acp-bridge $RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+categories:
+  - title: 'Added'
+    labels: ['enhancement', 'feature']
+  - title: 'Fixed'
+    labels: ['bug', 'fix']
+  - title: 'Build and CI'
+    labels: ['ci', 'build', 'dependencies']
+  - title: 'Documentation'
+    labels: ['documentation']
+
+# Anything unlabelled still appears, under this heading, rather than being dropped silently.
+category-template: '### $TITLE'
+exclude-labels: ['skip-changelog']
+
+# Which part of the version moves. Nothing here is 1.0 yet, so `major` is deliberately left
+# without labels: a breaking change at 0.0.x moves the patch like everything else, and the
+# first deliberate 1.0 should be a decision someone makes by hand.
+version-resolver:
+  minor:
+    labels: ['breaking']
+  default: patch
+
+autolabeler:
+  - label: 'ci'
+    files: ['.github/workflows/**']
+  - label: 'documentation'
+    files: ['README.md']
+
+template: |
+  $CHANGES
+
+  Install with `dotnet tool install -g AcpKit.Bridge --version $RESOLVED_VERSION`.
+
+  **Full diff**: https://github.com/vezaynk/acp-bridge/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION

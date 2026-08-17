@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>AcpKit.Bridge</RootNamespace>
+    <AssemblyName>acp-bridge</AssemblyName>
+
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>acp-bridge</ToolCommandName>
+    <PackageId>AcpKit.Bridge</PackageId>
+    <Title>Run an ACP agent over a WebSocket instead of a local pipe.</Title>
+    <Description>
+      A stdio-to-WebSocket pipe for the Agent Client Protocol. ACP agents speak
+      newline-delimited JSON-RPC over stdin and stdout, so a client can normally only reach an
+      agent it can spawn locally. `acp-bridge listen` runs where the agent lives, `acp-bridge
+      connect` runs where the client lives and stands in for the agent, and the conversation
+      between them is untouched.
+
+      It forwards bytes rather than decoding them, so no protocol version, message shape, or
+      future extension is something it can be wrong about.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Kestrel for the listener and System.IO.Pipelines for the framing, both from the shared
+      framework rather than from packages.
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../../README.md" Pack="true" PackagePath="/" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)../../LICENSE" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
+
+</Project>
