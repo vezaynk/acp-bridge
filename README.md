@@ -8,6 +8,40 @@ normally only talk to an agent it is able to spawn as a local process. This move
 boundary: `listen` runs where the agent lives, `connect` runs where the client lives and
 stands in for the agent, and the conversation between them is untouched.
 
+## Install
+
+**A binary**, if you would rather not think about .NET. Each release carries a self-contained
+build per platform — nothing else has to be installed, and the download is around 18 MB.
+
+```sh
+# macOS (Apple silicon); substitute your platform below
+VERSION=$(curl -fsSL https://api.github.com/repos/vezaynk/acp-bridge/releases/latest \
+  | grep -o '"tag_name": *"[^"]*"' | cut -d'"' -f4)
+
+curl -fsSLO "https://github.com/vezaynk/acp-bridge/releases/download/${VERSION}/acp-bridge-${VERSION}-osx-arm64.tar.gz"
+tar -xzf "acp-bridge-${VERSION}-osx-arm64.tar.gz"
+sudo mv acp-bridge /usr/local/bin/
+```
+
+Platforms: `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64`, `win-x64`, `win-arm64`. Windows
+builds are `.zip`. Every asset ships a `.sha256` beside it:
+
+```sh
+sha256sum -c "acp-bridge-${VERSION}-osx-arm64.tar.gz.sha256"
+```
+
+**A .NET tool**, if the machine already has the .NET 10 runtime. As a local tool the version
+is pinned in the repository and restored on a fresh clone, which is what you want for anything
+a project depends on:
+
+```sh
+dotnet new tool-manifest        # once per repository
+dotnet tool install AcpKit.Bridge
+dotnet acp-bridge --help
+```
+
+Or globally, if you would rather have it on `PATH` everywhere:
+
 ```sh
 dotnet tool install -g AcpKit.Bridge
 ```
@@ -79,7 +113,8 @@ far-side agent dies.
 ## Dependencies
 
 None at runtime. Kestrel hosts the listener and `System.IO.Pipelines` does the framing, both
-from the ASP.NET Core shared framework, so nothing has to be resolved from NuGet.
+from the ASP.NET Core shared framework, so nothing has to be resolved from NuGet. The
+released binaries are self-contained and trimmed, so they need no .NET installed at all.
 
 Despite the package name, it does not depend on [AcpKit](https://github.com/vezaynk/acpkit).
 A bridge that forwards bytes has no use for protocol types, and giving it some would only give

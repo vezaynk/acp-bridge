@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       dry-run:
-        description: 'Pack and validate without pushing'
+        description: 'Build and validate without pushing or uploading'
         type: boolean
         default: true
 
@@ -22,7 +22,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  # Everything ships only if the bridge still works, so the gate runs once, first, rather than
+  # being repeated in each downstream job.
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -41,9 +43,100 @@ jobs:
         env:
           ACP_BRIDGE: ${{ github.workspace }}/artifacts/bin/AcpKit.Bridge/release/acp-bridge
 
-      - name: Pack
-        run: dotnet pack src/AcpKit.Bridge -c Release --no-build -o artifacts/package
+  binaries:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # One Linux runner builds every target: self-contained publishing is cross-platform,
+        # because the runtime packs are ordinary NuGet packages. Native AOT would have needed
+        # a runner per operating system for a binary this is fast enough without.
+        rid: [linux-x64, linux-arm64, osx-x64, osx-arm64, win-x64, win-arm64]
 
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish ${{ matrix.rid }}
+        run: |
+          dotnet publish src/AcpKit.Bridge \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained \
+            -p:PublishSingleFile=true \
+            -p:PublishTrimmed=true \
+            -p:DebugType=none \
+            -o "publish/${{ matrix.rid }}"
+
+      # Self-contained so the machine running an agent needs no .NET installed. Trimmed
+      # because 18 MB is a download someone will accept and 98 MB is one they will not.
+      - name: Package
+        id: package
+        run: |
+          set -euo pipefail
+          rid='${{ matrix.rid }}'
+          version='${{ github.event.release.tag_name || github.sha }}'
+          name="acp-bridge-${version}-${rid}"
+
+          cp README.md LICENSE "publish/${rid}/"
+
+          mkdir -p dist
+          if [[ "$rid" == win-* ]]; then
+            (cd "publish/${rid}" && zip -qr "../../dist/${name}.zip" .)
+            echo "asset=dist/${name}.zip" >> "$GITHUB_OUTPUT"
+          else
+            chmod +x "publish/${rid}/acp-bridge"
+            tar -czf "dist/${name}.tar.gz" -C "publish/${rid}" .
+            echo "asset=dist/${name}.tar.gz" >> "$GITHUB_OUTPUT"
+          fi
+
+      # So a download can be checked against something, rather than trusted because it
+      # arrived over HTTPS.
+      - name: Checksum
+        run: |
+          cd dist
+          sha256sum "$(basename '${{ steps.package.outputs.asset }}')" \
+            > "$(basename '${{ steps.package.outputs.asset }}').sha256"
+
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload '${{ github.event.release.tag_name }}' dist/* --clobber
+
+      - name: Keep as a build artifact
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: acp-bridge-${{ matrix.rid }}
+          path: dist/*
+
+  nuget:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Pack
+        run: dotnet pack src/AcpKit.Bridge -c Release -o artifacts/package
+
+      # Exchanges this run's OIDC token for a short-lived NuGet key. The trust is configured on
+      # nuget.org against this repository and this workflow filename, so renaming the file
+      # breaks publishing by design rather than publishing from somewhere unexpected.
       - name: Authenticate to NuGet
         id: login
         uses: NuGet/login@v1
